@@ -417,6 +417,467 @@ public class ServicesUnitTests {
     }
 
 
+    // Cart Tests
+
+
+
+    @Test
+    void addCart_withValidInput_shouldReturnSameCart() {
+        Cart cart = new Cart(UUID.randomUUID(), new ArrayList<>());
+
+        Cart result = this.cartService.addCart(cart);
+
+        assertEquals(cart.getUserId(), result.getUserId());
+        assertTrue(result.getProducts().isEmpty());
+        assertNotNull(result.getId());
+    }
+
+    @Test
+    void addCart_withDuplicateId_shouldThrowException() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+
+        this.cartRepository.save(cart);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.addCart(cart);});
+    }
+
+    @Test
+    void addCart_withNoUser_shouldThrowException() {
+        Cart cart = new Cart();
+        cart.setProducts(new ArrayList<>());
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.addCart(cart);});
+    }
+
+    @Test
+    void getCarts_shouldReturnEmptyList() {
+        this.cartRepository.overrideData(new ArrayList<>());
+
+        ArrayList<Cart> result = this.cartService.getCarts();
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getCarts_shouldReturnListOfOneCart() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        ArrayList<Cart> carts = new ArrayList<>();
+        carts.add(cart);
+        this.cartRepository.overrideData(carts);
+
+        ArrayList<Cart> result = this.cartService.getCarts();
+
+        assertTrue(result.size() == 1);
+        assertEquals(cart.getId(), result.get(0).getId());
+    }
+
+    @Test
+    void getCarts_shouldReturnListOfTwoCarts() {
+        Cart cart1 = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        Cart cart2 = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        ArrayList<Cart> carts = new ArrayList<>();
+        carts.add(cart1);
+        carts.add(cart2);
+        this.cartRepository.overrideData(carts);
+
+        ArrayList<Cart> result = this.cartService.getCarts();
+
+        assertTrue(result.size() == 2);
+        assertEquals(cart1.getId(), result.get(0).getId());
+        assertEquals(cart2.getId(), result.get(1).getId());
+    }
+
+    @Test
+    void getCartById_validId_shouldReturnCart() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        Cart result = this.cartService.getCartById(cart.getId());
+
+        assertEquals(cart.getId(), result.getId());
+    }
+
+    @Test
+    void getCartById_invalidId_shouldThrowException() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.getCartById(UUID.randomUUID());});
+    }
+
+    @Test
+    void getCartById_noCarts_shouldThrowException() {
+        this.cartRepository.overrideData(new ArrayList<>());
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.getCartById(UUID.randomUUID());});
+    }
+
+    @Test
+    void getCartByUserId_validUserId_shouldReturnCart() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        Cart result = this.cartService.getCartByUserId(cart.getUserId());
+
+        assertEquals(cart.getId(), result.getId());
+    }
+
+    @Test
+    void getCartByUserId_invalidUserId_shouldThrowException() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.getCartByUserId(UUID.randomUUID());});
+    }
+
+    @Test
+    void getCartByUserId_noCarts_shouldThrowException() {
+        this.cartRepository.overrideData(new ArrayList<>());
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.getCartByUserId(UUID.randomUUID());});
+    }
+
+    @Test
+    void addProductToCart_validInput_shouldAddProductToCart() {
+        Product product = new Product("cola", 10.0);
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.overrideData(new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        this.cartService.addProductToCart(cart.getId(), product);
+
+        Cart result = this.cartRepository.findAll().get(0);
+        assertEquals(cart.getId(), result.getId());
+        assertNotNull(result.getProducts().get(0).getId());
+        assertEquals(product.getName(), result.getProducts().get(0).getName());
+        assertEquals(product.getPrice(), result.getProducts().get(0).getPrice());
+    }
+
+    @Test
+    void addProductToCart_invalidCartId_shouldThrowException() {
+        Product product = new Product("cola", 10.0);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.addProductToCart(UUID.randomUUID(), product);});
+    }
+
+    @Test
+    void addProductToCart_productWithNegativePrice_shouldThrowException() {
+        Product product = new Product("cola", -10.0);
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.addProductToCart(cart.getId(), product);});
+    }
+
+    @Test
+    void deleteProductFromCart_validInput_shouldDeleteProductFromCart() {
+        Product product = new Product(UUID.randomUUID(),"cola", 10.0);
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        cart.getProducts().add(product);
+        this.cartRepository.overrideData(new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        this.cartService.deleteProductFromCart(cart.getId(), product);
+
+        Cart result = this.cartRepository.findAll().get(0);
+        assertEquals(cart.getId(), result.getId());
+        assertTrue(result.getProducts().isEmpty());
+    }
+
+    @Test
+    void deleteProductFromCart_invalidCartId_shouldThrowException() {
+        Product product = new Product(UUID.randomUUID(),"cola", 10.0);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.deleteProductFromCart(UUID.randomUUID(), product);});
+    }
+
+    @Test
+    void deleteProductFromCart_productWithoutId_shouldThrowException() {
+        Product product = new Product("cola", 10.0);
+        product.setId(null);
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.deleteProductFromCart(cart.getId(), product);});
+    }
+
+    @Test
+    void deleteCartById_invalidId_shouldThrowException() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.deleteCartById(UUID.randomUUID());});
+    }
+
+    @Test
+    void deleteCartById_validId_shouldDeleteCart() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.overrideData(new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        this.cartService.deleteCartById(cart.getId());
+
+        assertTrue(this.cartRepository.findAll().isEmpty());
+    }
+
+    @Test
+    void deleteCartById_noCarts_shouldThrowException() {
+        this.cartRepository.overrideData(new ArrayList<>());
+
+        assertThrows(ResponseStatusException.class, () -> {this.cartService.deleteCartById(UUID.randomUUID());});
+    }
+
+
+
+    // User Tests
+
+
+    @Test
+    void deleteUserById_validId_shouldDeleteUser() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        this.userRepository.overrideData(new ArrayList<>());
+        this.userRepository.save(user);
+
+        this.userService.deleteUserById(user.getId());
+
+        assertTrue(this.userRepository.findAll().isEmpty());
+    }
+
+    @Test
+    void deleteUserById_invalidId_shouldThrowException() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        this.userRepository.save(user);
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.deleteUserById(UUID.randomUUID());});
+    }
+
+    @Test
+    void deleteUserById_noUsers_shouldThrowException() {
+        this.userRepository.overrideData(new ArrayList<>());
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.deleteUserById(UUID.randomUUID());});
+    }
+
+    @Test
+    void getUsers_shouldReturnEmptyList() {
+        this.userRepository.overrideData(new ArrayList<>());
+
+        ArrayList<User> result = this.userService.getUsers();
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getUsers_shouldReturnListOfOneUser() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        ArrayList<User> users = new ArrayList<>();
+        users.add(user);
+        this.userRepository.overrideData(users);
+
+        ArrayList<User> result = this.userService.getUsers();
+
+        assertTrue(result.size() == 1);
+        assertEquals(user.getId(), result.get(0).getId());
+    }
+
+    @Test
+    void getUsers_shouldReturnListOfTwoUsers() {
+        User user1 = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        User user2 = new User(UUID.randomUUID(), "Aly", new ArrayList<>());
+        ArrayList<User> users = new ArrayList<>();
+        users.add(user1);
+        users.add(user2);
+        this.userRepository.overrideData(users);
+
+        ArrayList<User> result = this.userService.getUsers();
+
+        assertTrue(result.size() == 2);
+        assertEquals(user1.getId(), result.get(0).getId());
+        assertEquals(user2.getId(), result.get(1).getId());
+    }
+
+    @Test
+    void getUserById_validId_shouldReturnUser() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        this.userRepository.save(user);
+
+        User result = this.userService.getUserById(user.getId());
+
+        assertEquals(user.getId(), result.getId());
+    }
+
+    @Test
+    void getUserById_invalidId_shouldThrowException() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        this.userRepository.save(user);
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.getUserById(UUID.randomUUID());});
+    }
+
+    @Test
+    void getUserById_noUsers_shouldThrowException() {
+        this.userRepository.overrideData(new ArrayList<>());
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.getUserById(UUID.randomUUID());});
+    }
+
+    @Test
+    void addUser_validInput_shouldReturnSameUser() {
+        User user = new User();
+        user.setName("Amr");
+
+        User result = this.userService.addUser(user);
+
+        assertNotNull(result.getId());
+        assertEquals(user.getName(), result.getName());
+        assertTrue(result.getOrders().isEmpty());
+    }
+
+    @Test
+    void addUser_withDuplicateId_shouldThrowException() {
+        UUID id = UUID.randomUUID();
+        User user = new User();
+        user.setId(id);
+        user.setName("Amr");
+        this.userRepository.save(user);
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.addUser(user);});
+    }
+
+    @Test
+    void addUser_withNameNull_shouldThrowException() {
+        User user = new User();
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.addUser(user);});
+    }
+
+    @Test
+    void getOrdersByUserId_validIdAndNoOrders_shouldReturnEmptyList() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        this.userRepository.save(user);
+
+        List<Order> orders = this.userService.getOrdersByUserId(user.getId());
+
+        assertTrue(orders.isEmpty());
+    }
+
+    @Test
+    void getOrdersByUserId_validId_shouldReturnUserOrders() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        Order order = new Order(UUID.randomUUID(), user.getId(), 100.0, new ArrayList<>());
+        Product product = new Product(UUID.randomUUID(), "meat", 100.0);
+        order.getProducts().add(product);
+        user.getOrders().add(order);
+        this.userRepository.save(user);
+
+        List<Order> orders = this.userService.getOrdersByUserId(user.getId());
+
+        assertTrue(orders.size() == 1);
+        assertEquals(order.getId(), orders.get(0).getId());
+    }
+
+    @Test
+    void getOrdersByUserId_invalidId_shouldThrowException() {
+        assertThrows(ResponseStatusException.class, () -> {this.userService.getOrdersByUserId(UUID.randomUUID());});
+    }
+
+    @Test
+    void emptyCart_validUserId_shouldEmptyCart() {
+        Product product = new Product(UUID.randomUUID(), "cola", 10.0);
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        cart.getProducts().add(product);
+        this.cartRepository.overrideData(new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        this.userService.emptyCart(cart.getUserId());
+
+        Cart result = this.cartRepository.findAll().get(0);
+
+        assertTrue(result.getProducts().isEmpty());
+    }
+
+    @Test
+    void emptyCart_validUserIdAndEmptyCart_shouldDoNothing() {
+        Cart cart = new Cart(UUID.randomUUID(), UUID.randomUUID(), new ArrayList<>());
+        this.cartRepository.overrideData(new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        this.userService.emptyCart(cart.getUserId());
+
+        Cart result = this.cartRepository.findAll().get(0);
+
+        assertTrue(result.getProducts().isEmpty());
+    }
+
+    @Test
+    void emptyCart_invalidUserId_shouldDoNothing() {
+        this.userService.emptyCart(UUID.randomUUID());
+    }
+
+    @Test
+    void removeOrderFromUser_invalidUserId_shouldThrowException() {
+        assertThrows(ResponseStatusException.class, () -> {this.userService.removeOrderFromUser(UUID.randomUUID(), UUID.randomUUID());});
+    }
+
+    @Test
+    void removeOrderFromUser_validInput_shouldRemoveOrderFromUser() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        Order order = new Order(UUID.randomUUID(), user.getId(), 0, new ArrayList<>());
+        user.getOrders().add(order);
+        this.userRepository.overrideData(new ArrayList<>());
+        this.userRepository.save(user);
+
+        this.userService.removeOrderFromUser(user.getId(), order.getId());
+
+        User result = this.userRepository.findAll().get(0);
+        assertEquals(user.getId(), result.getId());
+        assertTrue(result.getOrders().isEmpty());
+    }
+
+    @Test
+    void removeOrderFromUser_invalidOrderId_shouldThrowException() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        Order order = new Order(UUID.randomUUID(), user.getId(), 0, new ArrayList<>());
+        user.getOrders().add(order);
+        this.userRepository.save(user);
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.removeOrderFromUser(user.getId(), UUID.randomUUID());});
+    }
+
+    @Test
+    void addOrderToUser_invalidUserId_shouldThrowException() {
+        assertThrows(ResponseStatusException.class, () -> {this.userService.addOrderToUser(UUID.randomUUID());});
+    }
+
+    @Test
+    void addOrderToUser_noCart_shouldThrowException() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        this.userRepository.save(user);
+
+        assertThrows(ResponseStatusException.class, () -> {this.userService.addOrderToUser(user.getId());});
+    }
+
+    @Test
+    void addOrderToUser_validInput_shouldAddOrderToUser() {
+        User user = new User(UUID.randomUUID(), "Amr", new ArrayList<>());
+        this.userRepository.overrideData(new ArrayList<>());
+        this.userRepository.save(user);
+        Product product = new Product(UUID.randomUUID(), "meat", 300.0);
+        Cart cart = new Cart(UUID.randomUUID(), user.getId(), new ArrayList<>());
+        cart.getProducts().add(product);
+        this.productRepository.save(product);
+        this.cartRepository.overrideData(new ArrayList<>());
+        this.cartRepository.save(cart);
+
+        this.userService.addOrderToUser(user.getId());
+
+        Cart resultCart = this.cartRepository.findAll().get(0);
+        assertTrue(resultCart.getProducts().isEmpty());
+        User resultUser = this.userRepository.findAll().get(0);
+        assertEquals(user.getId(), resultUser.getId());
+        assertTrue(!resultUser.getOrders().isEmpty());
+        assertTrue(resultUser.getOrders().size() == 1);
+        assertTrue(resultUser.getOrders().get(0).getProducts().get(0).getId().equals(product.getId()));
+    }
 
 
 
